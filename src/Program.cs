@@ -1,7 +1,6 @@
 ﻿using MailKit;
 using MailKit.Net.Imap;
 using MailKit.Search;
-using MaxMail;
 using MaxMail.Models;
 
 var personalGmail = new ImapClient ();
