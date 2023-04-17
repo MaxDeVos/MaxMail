@@ -1,0 +1,17 @@
+﻿{
+  "filters": [
+    {
+      "match_any_or_all": "any",
+      "conditions": [
+        {
+          "type": "regex",
+          "part": "any",
+          "pattern": ".[uU]nsubscribe.*"
+        }
+      ],
+      "operations": [
+        "star"
+      ]
+    }
+  ]
+}
