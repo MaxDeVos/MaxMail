@@ -1,45 +1,90 @@
 ﻿using System.Diagnostics;
+using System.Net.Mime;
 using System.Text;
 using System.Text.RegularExpressions;
+using MaxMail.Models.Parts;
 using MimeKit;
 using MimeKit.Text;
 
 namespace MaxMail.Models;
 
 
-public enum MessageComponent
+public class Message
 {
-    All,
-    AllHeaders,
-    Subject,
-    To,
-    From,
-    ReplyTo,
-    Body,
-    Html,
-    PlainText
-}
-
-public class MessageModel
-{
-
+    
     public MimeMessage message;
     private int _attachmentCount;
 
-    public MessageModel(MimeMessage? message)
+    private List<BaseTextPart> _allTextParts;
+    private List<BaseTextPart> _plainTextParts;
+    private List<HtmlPart> _htmlParts;
+    
+    public Message(MimeMessage? message)
     {
         this.message = message ?? throw new ArgumentException($"Null Message");
+        _htmlParts = new List<HtmlPart>();
+        _plainTextParts = new List<BaseTextPart>();
+        _allTextParts = new List<BaseTextPart>();
+        AnalyzeParts();
     }
 
+    public string BodyContent => _allTextParts.Aggregate("", (current, part) => current + part.Content);
+
+    public string HtmlContent
+    {
+        get => _htmlParts.Aggregate("", (current, item) => $"{current}\n{item.Content}");
+    }
+    
+    public string PlainTextContent 
+    {
+        get => _plainTextParts.Aggregate("", (current, item) => $"{current}\n{item.Content}");
+    }
+    
+    public string VisibleText 
+    {
+        get
+        {
+            var visibleText = "";
+            visibleText += _htmlParts.Aggregate("", (current, htmlPart) => current + htmlPart.VisibleContent);
+            visibleText += _plainTextParts.Aggregate(visibleText, (current, textPart) => current + textPart.VisibleContent);
+            return visibleText;
+        }
+    }
+
+    
+    public string HeaderValue
+    {
+        get => message.Headers.Aggregate("", (current, header) => current + $"{header.Value}\n");
+    }
+    
+    public string HeaderBlockContent
+    {
+        get => message.Headers.Aggregate("", (current, header) => current + $"{header.Field}: {header.Value}\n");
+    }
+
+    public string AllContent
+    {
+        get => $"{HeaderValue}\n{BodyContent}";
+    }    
+    
     private void AnalyzeParts()
     {
         foreach (var part in message.BodyParts)
         {
-            Console.WriteLine(part.ToString());
-            
-            if (part.IsAttachment)
+
+            if (part.ContentType.MediaType == "text")
             {
-                _attachmentCount++;
+                _allTextParts.Add(BaseTextPart.Create(part));
+            }
+            
+            switch (Part.GetPartType(part))
+            {
+                case PartType.PlainText:
+                    _plainTextParts.Add(BaseTextPart.Create(part));
+                    break;
+                case PartType.Html:
+                    _htmlParts.Add(HtmlPart.Create(part));
+                    break;
             }
         }
     }
@@ -83,19 +128,13 @@ public class MessageModel
         return returnPath.Replace("<", "").Replace(">", "");
     }
 
-    public bool GetDoesReturnPathEqualFrom()
+    public bool DoesMessageReplyToSender()
     {
         if (message.From.Count > 1)
         {
             return true;
         }
         
-        if (message.Subject.Contains("unsubscribe", StringComparison.CurrentCultureIgnoreCase))
-        {
-            Console.WriteLine($"FOUND UNSUBSCRIBE: {message.Subject}");
-            return false;
-        }
-
         if (!HasReturnToAddress())
         {
             return true;
@@ -162,77 +201,55 @@ public class MessageModel
 
     }
 
-    public enum ContentType
+
+    public string GetAllContentOfPartType(MessageComponent component)
     {
-        Plaintext, Html, Any
-    }
-
-    public bool Contains(string str, bool headers = false)
-    {
-        if (GetDecodedBodyContents().Contains(str))
+        switch (component)
         {
-            return true;
-        }
-
-        if (!headers)
-        {
-            return false;
-        }
-
-        return message.Headers.Any(header => header.Value.Contains(str));
-    }
-    
-    public string GetDecodedBodyContents(ContentType contentType = ContentType.Any)
-    {
-
-        bool doPlaintext = contentType != ContentType.Html;
-        bool doHtml = contentType != ContentType.Plaintext;
-
-        var output = "";
-        
-        foreach (var basePart in message.BodyParts)
-        {
-
-            if (basePart.ContentType.MediaType != "text")
-            {
-                continue;   
-            }
-
-            var part = (TextPart) basePart;
-            var encoding = part.ContentType.CharsetEncoding ?? Encoding.Default;
-
-
-            switch (part.Format)
-            {
-                case TextFormat.Plain:
-                case TextFormat.Flowed:
-                case TextFormat.Enriched:
-                    if (doPlaintext)
-                    {
-                        output += part.GetText(encoding);
-                    }
-                    break;
+            case MessageComponent.HeaderBlock:
+                return HeaderBlockContent;
+            
+            case MessageComponent.HeaderContent:
+                return HeaderValue;
+            
+            case MessageComponent.Subject:
+                return message.Subject;
+            
+            case MessageComponent.To:
+                return message.To.Aggregate("", (current, address) => current + (address.Name + "\n"));
+            
+            case MessageComponent.From:
+                return message.From.Aggregate("", (current, address) => current + (address.Name + "\n"));
+            
+            case MessageComponent.Body:
+                return BodyContent;
+           
+            case MessageComponent.Html:
+                return HtmlContent;
+            
+            case MessageComponent.PlainText:
+                return PlainTextContent;
                 
-                case TextFormat.Html:
-                case TextFormat.RichText:
-                case TextFormat.CompressedRichText:
-                    if (doHtml)
-                    {
-                        output += part.GetText(encoding);
-                    }
-                    break;
-                
-                default:
-                    continue;
-            }
-
+            case MessageComponent.VisibleText:
+                return VisibleText; 
+            
+            case MessageComponent.All:
+                return AllContent;
+            
+            default:
+                throw new ArgumentOutOfRangeException(nameof(component), component, null);
         }
 
-        return output;
+        return "";
 
     }
     
-
+    public bool Contains(string str, MessageComponent component = MessageComponent.All)
+    {
+        return Regex.IsMatch(GetAllContentOfPartType(component), str);
+    }
+    
+    
     public void WritePartsToFiles(string mailbox, string basePath = @"C:\Workspace\C#\MaxMail\dataset\")
     {
         var partNum = 0;
