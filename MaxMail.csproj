@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <None Remove="MaxMail.sln.DotSettings" />
+    <None Remove="run" />
   </ItemGroup>
 
 </Project>

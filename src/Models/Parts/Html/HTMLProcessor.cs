@@ -2,7 +2,7 @@
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
 
-namespace MaxMail;
+namespace MaxMail.Models.Parts.Html;
 
 public class HtmlProcessor
 {
@@ -10,14 +10,14 @@ public class HtmlProcessor
     private string _rawHtml;
     private HtmlDocument _document;
     
-    public HtmlProcessor(string htmlPath)
+    public HtmlProcessor(string htmlContent)
     {
         _document = new HtmlDocument();
-        _document.Load(File.OpenRead(htmlPath), Encoding.UTF8);
+        _document.Load(htmlContent);
         _rawHtml = _document.Text;
     }
 
-    public IEnumerable<string> GetVisibleText()
+    public IEnumerable<string> GetVisibleTextObjects()
     {
         return _document.DocumentNode.Descendants().
             Where(n =>
@@ -27,11 +27,16 @@ public class HtmlProcessor
             ).Select(n => n.InnerText.ToLower());
     }
 
+    public string GetVisibleText()
+    {
+        return GetVisibleTextObjects().Aggregate((s, s1) => $"{s} {s1}");
+    }
+
     public int GetVisibleTextLength()
     {
         try
         {
-            var allText = GetVisibleText().Aggregate((a,b) => $"{a} {b}");
+            var allText = GetVisibleTextObjects().Aggregate((a,b) => $"{a} {b}");
             return allText.Length;
         }
         catch (InvalidOperationException)

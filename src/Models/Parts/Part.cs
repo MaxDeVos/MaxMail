@@ -1,6 +1,7 @@
-﻿using MimeKit;
+﻿using System.Text;
+using MimeKit;
 
-namespace MaxMail.Models;
+namespace MaxMail.Models.Parts;
 
 public enum PartType
 {
@@ -15,21 +16,30 @@ public enum PartType
 }
 
 
-public class Part
+public abstract class Part
 {
 
-    protected MimeEntity _part;
-    private string _content;
+    private readonly MimeEntity _part;
     
-    public Part(MimeEntity part)
+    protected Part(MimeEntity part)
     {
         _part = part;
     }
 
-    public PartType GetPartType()
+    public abstract string Content
+    {
+        get;
+    }
+
+    public abstract string VisibleContent
+    {
+        get;
+    }
+    
+    public static PartType GetPartType(MimeEntity part)
     {
 
-        switch (_part.ContentType.MimeType)
+        switch (part.ContentType.MimeType)
         {
             case "text/html":
                 return PartType.Html;
@@ -42,7 +52,7 @@ public class Part
         }
 
         // ReSharper disable once ConvertSwitchStatementToSwitchExpression
-        switch (_part.ContentType.MediaType)
+        switch (part.ContentType.MediaType)
         {
             case "image":
                 return PartType.Image;
