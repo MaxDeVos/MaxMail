@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using MaxMail.Models;
+using MaxMail.Models.Parts;
 using Org.BouncyCastle.Crypto.Engines;
 
 namespace MaxMail.Filters.Conditions;
@@ -19,7 +20,7 @@ public class RegexCondition: Condition
     private string Part;
     
     
-    public override bool EvaluateMessage(MessageModel messageModel)
+    public override bool EvaluateMessage(Message message)
     {
         if (!_parsed)
         {
