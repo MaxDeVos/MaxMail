@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using MaxMail.Models.Parts.Html;
 
 namespace MaxMail.tests;
 

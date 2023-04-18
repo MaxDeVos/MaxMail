@@ -24,7 +24,7 @@ foreach (var uid in gmailRealPeople.Search(SearchQuery.All))
     if (rawMessage == null)
         continue;
 
-    var message = new MessageModel(rawMessage);
+    var message = new Message(rawMessage);
 
     if (message.Contains("Unsubscribe") || message.Contains("unsubscribe") || message.Contains("email preferences"))
     {
