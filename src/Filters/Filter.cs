@@ -33,14 +33,14 @@ public class Filter
         _operations.Add(operation);
     }
 
-    private bool EvaluateMessage(MessageModel messageModel)
+    private bool EvaluateMessage(Message message)
     {
         switch (_matchType)
         {
             case MatchType.Any:     // If any condition evaluates as true, return true
                 foreach (var condition in _conditions)
                 {
-                    if (condition.EvaluateMessage(messageModel))
+                    if (condition.EvaluateMessage(message))
                     {
                         return true;
                     }
@@ -51,7 +51,7 @@ public class Filter
             case MatchType.All:     // If any condition evaluates as false, return false
                 foreach (var condition in _conditions)
                 {
-                    if (!condition.EvaluateMessage(messageModel))
+                    if (!condition.EvaluateMessage(message))
                     {
                         return false;
                     }
@@ -63,11 +63,11 @@ public class Filter
         return true;
     }
 
-    private void ExecuteOperations(MessageModel messageModel)
+    private void ExecuteOperations(Message message)
     {
         foreach (var operation in _operations)
         {
-            operation.Execute(messageModel);
+            operation.Execute(message);
         }
     }
 }
